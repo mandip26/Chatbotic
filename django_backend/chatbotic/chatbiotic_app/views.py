@@ -1,7 +1,9 @@
 from django.shortcuts import redirect
 from django.contrib.auth.models import User
-from rest_framework import generics
-from .serializers import UserSerializer
+from rest_framework import generics, status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .serializers import UserSerializer, LoginSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from allauth.socialaccount.models import SocialToken, SocialAccount
 from django.contrib.auth.decorators import login_required
@@ -27,6 +29,23 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
     
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if serializer.is_valid():
+            return Response({
+                'message': 'Login successful',
+                'access_token': serializer.validated_data['access_token'],
+                'refresh_token': serializer.validated_data['refresh_token'],
+                'user': serializer.get_user(serializer.validated_data)
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @login_required
 def google_login_callback(request):
     user = request.user
